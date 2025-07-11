@@ -1,0 +1,4 @@
+pygsheets
+google-auth
+beautifulsoup4
+lxml

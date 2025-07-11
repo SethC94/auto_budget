@@ -1,0 +1,9 @@
+{
+    "gmail_user": "creasman.alert@gmail.com",
+    "gmail_app_password": "musc xcfg iqyb vphi",
+    "imap_server": "imap.gmail.com",
+    "google_service_account_json": "/Users/sethcreasman/src/gcp/sa_secrets/auto-budget-415622-a133b34af817.json",
+    "sheet_name": "auto_budget_sheet",
+    "summary_tab": "Summary",
+    "transactions_tab": "Transactions"
+}

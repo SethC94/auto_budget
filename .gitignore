@@ -1,0 +1,41 @@
+# Python cache/bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter/IPython stuff
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# VS Code/IDEA/editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Google API/service account secrets
+*.json
+!config.json        # Allow config.json, but block others (like service accounts)
+!planned_backup.json  # Allow planned_backup.json if you want to keep backup in repo
+
+# App-specific runtime files
+last_email_uid.txt
+last_transaction.json
+last_shutdown.json
+app_incidents.log
+budget_app_logs.txt
+planned_backup.json
+
+# Backfill and sample/test data
+back_fill.txt
+auto_budget_sheet - Summary.csv
+
+# Windows batch scripts (optional: keep in repo if you want)
+# start_app.bat
+
+# Requirements/README/etc should stay in repo
+# requirements.txt
+# READEME.md

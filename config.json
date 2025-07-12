@@ -5,5 +5,6 @@
     "google_service_account_json": "/Users/sethcreasman/src/gcp/sa_secrets/auto-budget-415622-a133b34af817.json",
     "sheet_name": "auto_budget_sheet",
     "summary_tab": "Summary",
-    "transactions_tab": "Transactions"
+    "transactions_tab": "Transactions",
+    "my_alert_email": "creasman.alert@gmail.com"
 }

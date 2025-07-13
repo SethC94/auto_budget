@@ -3,6 +3,7 @@ Main entry point and orchestrator for my budget app.
 I need to supervise all components: email ingest, log server, ngrok tunnel, self-updates, error handling, and incident logging.
 TODO: Review all TODOs below and improve as needed.
 """
+# triggering fresh pull
 
 import os
 import sys

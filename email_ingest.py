@@ -9,15 +9,16 @@ import email
 import time
 import json
 import traceback
+import logging
+import requests
 from insert_transaction import insert_transaction
 from transaction_parser import parse_email_transaction
 from modify_budget import load_config
 
-import logging
-
 HEARTBEAT_INTERVAL = 3600  # seconds (1 hour)
 LAST_UID_FILE = "last_email_uid.txt"
 LAST_TXN_FILE = "last_transaction.json"
+LOG_SERVER_LOCAL_URL = "http://localhost:5000/logs"
 
 def get_logger():
     """I need to get the main logger for the app."""
@@ -46,6 +47,36 @@ def load_last_transaction():
             return json.load(f)
     except Exception:
         return None
+
+def get_ngrok_url():
+    """I need to get the public ngrok URL if available, or return None."""
+    try:
+        resp = requests.get("http://localhost:4040/api/tunnels", timeout=2)
+        tunnels = resp.json().get("tunnels", [])
+        for tunnel in tunnels:
+            if tunnel["proto"] == "https" and "log" in tunnel["public_url"]:
+                return tunnel["public_url"] + "/logs"
+            if tunnel["proto"] == "https":
+                return tunnel["public_url"] + "/logs"
+        return None
+    except Exception:
+        return None
+
+def is_log_server_available():
+    """I need to check if the log server is responding."""
+    try:
+        resp = requests.get(LOG_SERVER_LOCAL_URL, timeout=2)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+def get_log_access_url():
+    """I need to return the ngrok log access URL if server is up and ngrok is up."""
+    if is_log_server_available():
+        url = get_ngrok_url()
+        if url:
+            return url
+    return None
 
 def send_status_email(subject, body, config):
     """I need to send a status or heartbeat email."""
@@ -139,9 +170,13 @@ def main(alive_event):
             time.sleep(60)
             continue
 
-        # Send heartbeat email every hour
+        # Send heartbeat email every hour, with log URL if available
         if now - last_heartbeat > HEARTBEAT_INTERVAL:
-            send_status_email("Budget App Heartbeat", "Budget App is alive and working!", config)
+            log_url = get_log_access_url()
+            body = "Budget App is alive and working!"
+            if log_url:
+                body += f"\nSee logs at: {log_url}"
+            send_status_email("Budget App Heartbeat", body, config)
             logger.info("Heartbeat sent.")
             last_heartbeat = now
 

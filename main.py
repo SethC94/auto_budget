@@ -3,7 +3,6 @@ Main entry point and orchestrator for my budget app.
 I need to supervise all components: email ingest, log server, ngrok tunnel, self-updates, error handling, and incident logging.
 TODO: Review all TODOs below and improve as needed.
 """
-# triggering fresh pull
 
 import os
 import sys
@@ -130,11 +129,42 @@ def run_log_server():
     app.run(host="0.0.0.0", port=5000)
 
 # --- Ngrok Tunnel ---
+def kill_other_ngrok_processes():
+    """
+    I need to kill any other ngrok processes before starting a new tunnel.
+    TODO: Test this on both Windows and Unix platforms to make sure it works everywhere.
+    """
+    try:
+        if os.name == 'nt':
+            # Windows
+            cmd = 'tasklist'
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _ = proc.communicate()
+            if b'ngrok.exe' in out:
+                kill_cmd = 'taskkill /F /IM ngrok.exe'
+                subprocess.call(kill_cmd, shell=True)
+                logger.info("Killed existing ngrok.exe processes.")
+        else:
+            # Mac/Linux
+            cmd = "pgrep ngrok"
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _ = proc.communicate()
+            pids = [line.decode().strip() for line in out.splitlines() if line.strip()]
+            for pid in pids:
+                if pid:
+                    os.kill(int(pid), signal.SIGKILL)
+            if pids:
+                logger.info(f"Killed existing ngrok processes: {', '.join(pids)}")
+    except Exception as e:
+        logger.warning(f"Failed to kill existing ngrok processes: {e}")
+
 def run_ngrok(domain):
     """I need to keep ngrok running on the specified domain, restarting if needed."""
     while True:
         logger.info("Starting ngrok tunnel...")
         try:
+            # I need to make sure no other ngrok processes are running before I start a new one.
+            kill_other_ngrok_processes()
             proc = subprocess.Popen(["ngrok", "http", "--domain", domain, "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _, err = proc.communicate()
             if proc.returncode != 0:

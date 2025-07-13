@@ -3,7 +3,6 @@ Main entry point and orchestrator for my budget app.
 I need to supervise all components: email ingest, log server, ngrok tunnel, self-updates, error handling, and incident logging.
 TODO: Review all TODOs below and improve as needed.
 """
-# triggering fresh pull
 
 import os
 import sys
@@ -93,7 +92,7 @@ def get_heartbeat_info():
 
 # --- Email Notification ---
 def send_error_email(subject, body):
-    """I need to email myself when something bad happens."""
+    """I need to email myself when something bad happens or important events occur."""
     try:
         msg = MIMEText(body)
         msg['Subject'] = subject
@@ -107,6 +106,20 @@ def send_error_email(subject, body):
         server.quit()
     except Exception as e:
         logger.error(f"Failed to send alert email: {e}")
+
+# --- Utility: Kill Existing ngrok Sessions ---
+def kill_existing_ngrok():
+    """I need to kill all existing ngrok processes before starting a new one.
+    TODO: Improve process detection for cross-platform compatibility if needed.
+    """
+    try:
+        if os.name == "nt":
+            os.system('taskkill /F /IM ngrok.exe >nul 2>&1')
+        else:
+            os.system('pkill ngrok')
+        logger.info("Killed any existing ngrok sessions.")
+    except Exception as e:
+        logger.warning(f"Failed to kill existing ngrok: {e}")
 
 # --- Flask Log Server ---
 def run_log_server():
@@ -133,6 +146,7 @@ def run_log_server():
 def run_ngrok(domain):
     """I need to keep ngrok running on the specified domain, restarting if needed."""
     while True:
+        kill_existing_ngrok()
         logger.info("Starting ngrok tunnel...")
         try:
             proc = subprocess.Popen(["ngrok", "http", "--domain", domain, "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -385,8 +399,11 @@ def heartbeat(alive_event):
 
 # --- Main Orchestration ---
 def main():
-    """I need to orchestrate all app functions: servers, ingest, updater, etc."""
+    """I need to orchestrate all app functions: servers, ingest, updater, etc.
+    TODO: Add more robust error reporting for startup failures.
+    """
     logger.info("Budget App starting up. Let's get to work!")
+    send_error_email("Budget App Started", "The Budget App has started successfully.")
 
     # Shared status event for heartbeat
     alive_event = threading.Event()
@@ -422,11 +439,13 @@ def main():
             time.sleep(60)
     except KeyboardInterrupt:
         logger.info("Budget App received shutdown signal. Exiting.")
+        send_error_email("Budget App Stopped", "The Budget App was stopped (KeyboardInterrupt).")
         sys.exit(0)
     except Exception as e:
         logger.error(f"Fatal error in main: {e}", exc_info=True)
         update_heartbeat_info(last_critical_error=str(e))
         send_error_email("Budget App Fatal Error", f"Fatal error: {e}")
+        send_error_email("Budget App Stopped", "The Budget App was stopped due to a fatal error.")
         sys.exit(1)
 
 if __name__ == "__main__":

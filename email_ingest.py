@@ -2,6 +2,8 @@
 Email ingest for my budget app.
 I need to poll Gmail, parse transactions, and insert them into my sheet.
 TODO: Refactor for more robust IMAP and error handling if needed.
+TODO: Add startup and shutdown email notifications for monitoring.
+TODO: Consider limiting the number of retries on error.
 """
 
 import imaplib
@@ -11,6 +13,8 @@ import json
 import traceback
 import logging
 import requests
+import smtplib
+from email.mime.text import MIMEText
 from insert_transaction import insert_transaction
 from transaction_parser import parse_email_transaction
 from modify_budget import load_config
@@ -19,12 +23,40 @@ HEARTBEAT_INTERVAL = 3600  # seconds (1 hour)
 LAST_UID_FILE = "last_email_uid.txt"
 LAST_TXN_FILE = "last_transaction.json"
 LOG_SERVER_LOCAL_URL = "http://localhost:5000/logs"
+CONFIG_FILE = "config.json"
 
 def get_logger():
     """I need to get the main logger for the app."""
-    return logging.getLogger("BudgetApp")
+    logger = logging.getLogger("EmailIngest")
+    if not logger.handlers:
+        fh = logging.FileHandler("email_ingest_activity.log")
+        fh.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
+        logger.addHandler(fh)
+        sh = logging.StreamHandler()
+        sh.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
+        logger.addHandler(sh)
+    logger.setLevel(logging.INFO)
+    return logger
 
 logger = get_logger()
+
+def send_status_email(subject, body):
+    """I need to send a status or heartbeat email."""
+    try:
+        with open(CONFIG_FILE) as f:
+            config = json.load(f)
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = config["gmail_user"]
+        msg['To'] = config["my_alert_email"]
+        s = smtplib.SMTP("smtp.gmail.com", 587)
+        s.starttls()
+        s.login(config["gmail_user"], config["gmail_app_password"])
+        s.sendmail(config["gmail_user"], [config["my_alert_email"]], msg.as_string())
+        s.quit()
+        logger.info(f"Sent email: {subject}")
+    except Exception as e:
+        logger.error(f"Failed to send status email: {e}")
 
 def save_last_uid(uid):
     with open(LAST_UID_FILE, "w") as f:
@@ -77,26 +109,6 @@ def get_log_access_url():
         if url:
             return url
     return None
-
-def send_status_email(subject, body, config):
-    """I need to send a status or heartbeat email."""
-    import smtplib
-    from email.mime.text import MIMEText
-
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = config["gmail_user"]
-    msg['To'] = config["my_alert_email"]
-
-    try:
-        s = smtplib.SMTP("smtp.gmail.com", 587)
-        s.starttls()
-        s.login(config["gmail_user"], config["gmail_app_password"])
-        s.sendmail(config["gmail_user"], [config["my_alert_email"]], msg.as_string())
-        s.quit()
-        logger.info(f"Sent email: {subject}")
-    except Exception as e:
-        logger.error(f"Failed to send status email: {e}")
 
 def check_inbox_and_process(config, alive_event):
     """I need to connect to IMAP, look for new transaction emails, and process them."""
@@ -156,31 +168,41 @@ def check_inbox_and_process(config, alive_event):
     finally:
         alive_event.set()
 
-def main(alive_event):
+def main(alive_event=None):
+    """I need to poll Gmail for transaction emails and process them, sending alerts on start/stop/crash."""
+    send_status_email("Budget App Email Ingest Started", "The email ingestion process has started successfully.")
     config = load_config()
     last_heartbeat = 0
+    try:
+        while True:
+            now = time.time()
+            try:
+                check_inbox_and_process(config, alive_event)
+            except Exception as e:
+                # If IMAP fails, log and wait before retry
+                logger.error(f"Exception in email ingest loop: {e}\n{traceback.format_exc()}")
+                send_status_email("Budget App Email Ingest Error", f"Exception in email ingest loop:\n{e}\n{traceback.format_exc()}")
+                time.sleep(60)
+                continue
 
-    while True:
-        now = time.time()
-        try:
-            check_inbox_and_process(config, alive_event)
-        except Exception as e:
-            # If IMAP fails, log and wait before retry
-            logger.error(f"Exception in email ingest loop: {e}\n{traceback.format_exc()}")
-            time.sleep(60)
-            continue
+            # Send heartbeat email every hour, with log URL if available
+            if now - last_heartbeat > HEARTBEAT_INTERVAL:
+                log_url = get_log_access_url()
+                body = "Budget App email ingest is alive and working!"
+                if log_url:
+                    body += f"\nSee logs at: {log_url}"
+                send_status_email("Budget App Email Ingest Heartbeat", body)
+                logger.info("Heartbeat sent.")
+                last_heartbeat = now
 
-        # Send heartbeat email every hour, with log URL if available
-        if now - last_heartbeat > HEARTBEAT_INTERVAL:
-            log_url = get_log_access_url()
-            body = "Budget App is alive and working!"
-            if log_url:
-                body += f"\nSee logs at: {log_url}"
-            send_status_email("Budget App Heartbeat", body, config)
-            logger.info("Heartbeat sent.")
-            last_heartbeat = now
-
-        time.sleep(30)  # Poll interval
+            time.sleep(30)  # Poll interval
+    except KeyboardInterrupt:
+        logger.info("Email ingest process received shutdown signal. Exiting.")
+        send_status_email("Budget App Email Ingest Stopped", "The email ingestion process was stopped (KeyboardInterrupt).")
+    except Exception as e:
+        logger.error(f"Fatal error in email ingest main: {e}\n{traceback.format_exc()}")
+        send_status_email("Budget App Email Ingest Crashed", f"Fatal error:\n{e}\n{traceback.format_exc()}")
 
 if __name__ == "__main__":
+    import threading
     main(threading.Event())

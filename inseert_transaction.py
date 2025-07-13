@@ -1,14 +1,11 @@
 import pygsheets
 import json
 
-# TODO: Add more robust category logic if needed
-
 def get_allowed_categories(wks):
     cats = wks.get_values('B28', 'B79')
     return [c[0] for c in cats if c and c[0].strip()]
 
 def classify_category(desc, allowed_categories):
-    # TODO: Smarter mapping as needed
     desc_low = desc.lower()
     rules = [
         (r'safeway|save mart|grocery|foodmaxx|winco|whalers|grocery outlet|costco', 'Groceries'),
@@ -18,7 +15,6 @@ def classify_category(desc, allowed_categories):
         (r'starbucks|dunkin', 'Coffee Shops'),
         (r'chevron|arco|shell|gas|fuel|7-eleven', 'Gas'),
         (r'cinemark|movies|theatre', 'Movies & DVDs'),
-        # TODO: Add more as needed!
     ]
     import re
     for regex, mapped in rules:
@@ -42,12 +38,13 @@ def insert_transaction(txn, config):
     allowed_categories = get_allowed_categories(summary_wks)
     txn['category'] = classify_category(txn['desc'], allowed_categories)
 
-    # Insert new row at 5 (index 4)
     wks.insert_rows(4, number=1, values=None)
     row = 5
-    wks.update_value((row, 2), txn['date'])       # B = Date
-    wks.update_value((row, 3), txn['amount'])     # C = Amount
-    wks.update_value((row, 4), txn['desc'])       # D = Description
-    wks.update_value((row, 5), txn['category'])   # E = Category
+    wks.update_value((row, 2), txn['date'])
+    wks.update_value((row, 3), txn['amount'])
+    wks.update_value((row, 4), txn['desc'])
+    wks.update_value((row, 5), txn['category'])
 
-    print(f"Inserted transaction at row {row}: {txn}")
+    import logging
+    logger = logging.getLogger("BudgetApp")
+    logger.info(f"Inserted transaction at row {row}: {txn}")

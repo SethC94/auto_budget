@@ -2,3 +2,6 @@ pygsheets
 google-auth
 beautifulsoup4
 lxml
+requests
+colorama
+flask

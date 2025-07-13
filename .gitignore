@@ -34,7 +34,10 @@ back_fill.txt
 auto_budget_sheet - Summary.csv
 
 # Windows batch scripts (optional: keep in repo if you want)
-# start_app.bat
+start_app.bat
+
+ngrok.exe
+config.json
 
 # Requirements/README/etc should stay in repo
 # requirements.txt

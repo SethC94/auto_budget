@@ -30,6 +30,9 @@ ngrok_url.txt
 deprecated/
 files/
 
+deprecated/
+files/
+
 # Backfill and sample/test data
 back_fill.txt
 auto_budget_sheet - Summary.csv

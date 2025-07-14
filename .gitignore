@@ -1,0 +1,45 @@
+# Python cache/bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter/IPython stuff
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# VS Code/IDEA/editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Google API/service account secrets
+*.json
+!config.json        # Allow config.json, but block others (like service accounts)
+!planned_backup.json  # Allow planned_backup.json if you want to keep backup in repo
+
+# App-specific runtime files
+budget_app_logs.txt
+budget_app_stderr.log
+budget_app_stdout.log
+ngrok_url.txt
+
+deprecated/
+files/
+
+# Backfill and sample/test data
+back_fill.txt
+auto_budget_sheet - Summary.csv
+
+# Windows batch scripts (optional: keep in repo if you want)
+start_app.bat
+
+ngrok.exe
+config.json
+
+# Requirements/README/etc should stay in repo
+# requirements.txt
+# READEME.md
